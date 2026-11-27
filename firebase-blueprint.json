@@ -1,0 +1,124 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Private user account profile storing FCM token and paired couple room reference.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID of the owner." },
+        "displayName": { "type": "string", "description": "Display name shown to partner." },
+        "fcmToken": { "type": "string", "description": "Latest Firebase Cloud Messaging registration token." },
+        "roomId": { "type": "string", "description": "Active 2-person couple room ID." },
+        "partnerUid": { "type": "string", "description": "Paired partner Firebase UID." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp of creation." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp of last update." }
+      },
+      "required": ["userId", "displayName", "createdAt", "updatedAt"]
+    },
+    "CoupleRoom": {
+      "title": "CoupleRoom",
+      "description": "Private two-seat couple vault coordinating membership and disappearing message timer.",
+      "type": "object",
+      "properties": {
+        "creatorUid": { "type": "string", "description": "UID of the user who created the couple room." },
+        "memberUids": { "type": "array", "description": "Bounded list of at most 2 Firebase UIDs." },
+        "inviteCodeHash": { "type": "string", "description": "SHA-256 hash of the room pairing code." },
+        "disappearingSeconds": { "type": "integer", "description": "Auto-delete timer in seconds (0, 60, 3600, 86400)." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp of creation." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp of last update." }
+      },
+      "required": ["creatorUid", "memberUids", "inviteCodeHash", "disappearingSeconds", "createdAt", "updatedAt"]
+    },
+    "PresenceStatus": {
+      "title": "PresenceStatus",
+      "description": "Real-time partner online, typing, recording audio, and FCM push token status.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner UID." },
+        "memberUids": { "type": "array", "description": "Denormalized room member UIDs (max 2)." },
+        "displayName": { "type": "string", "description": "Display name." },
+        "online": { "type": "boolean", "description": "True while app is in foreground." },
+        "typing": { "type": "boolean", "description": "True while user is actively typing." },
+        "recordingAudio": { "type": "boolean", "description": "True while recording a voice note." },
+        "fcmToken": { "type": "string", "description": "Latest FCM token for direct partner push." },
+        "lastSeenAt": { "type": "string", "format": "date-time", "description": "Server timestamp of last activity." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp of update." }
+      },
+      "required": ["userId", "memberUids", "displayName", "online", "typing", "recordingAudio", "lastSeenAt", "updatedAt"]
+    },
+    "EncryptedMessage": {
+      "title": "EncryptedMessage",
+      "description": "Zero-knowledge AES-256-GCM encrypted message envelope stored in Firestore.",
+      "type": "object",
+      "properties": {
+        "senderUid": { "type": "string", "description": "Sender Firebase UID." },
+        "memberUids": { "type": "array", "description": "Denormalized room member UIDs (max 2)." },
+        "messageType": { "type": "string", "enum": ["TEXT", "IMAGE", "VOICE", "FILE_P2P"] },
+        "encryptedPayload": { "type": "string", "description": "Base64(12-byte IV || AES-GCM ciphertext + tag)." },
+        "replyToMessageId": { "type": "string", "description": "Optional quoted message document ID." },
+        "encryptedReplyPreview": { "type": "string", "description": "Optional AES-GCM encrypted reply snippet." },
+        "status": { "type": "string", "enum": ["SENT", "DELIVERED", "READ"] },
+        "reactionJson": { "type": "string", "description": "Optional AES-GCM encrypted reactions JSON." },
+        "deletedForEveryone": { "type": "boolean", "description": "True if deleted for both users." },
+        "expiresAtMillis": { "type": "integer", "description": "Epoch millis for disappearing message auto-delete, or 0." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp of send." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp of status/reaction update." }
+      },
+      "required": ["senderUid", "memberUids", "messageType", "encryptedPayload", "status", "deletedForEveryone", "expiresAtMillis", "createdAt", "updatedAt"]
+    },
+    "CallSignal": {
+      "title": "CallSignal",
+      "description": "Encrypted WebRTC SDP offer/answer signaling session between the two partners.",
+      "type": "object",
+      "properties": {
+        "callerUid": { "type": "string", "description": "Caller Firebase UID." },
+        "memberUids": { "type": "array", "description": "Denormalized room member UIDs (max 2)." },
+        "callType": { "type": "string", "enum": ["AUDIO", "VIDEO"] },
+        "status": { "type": "string", "enum": ["RINGING", "ACTIVE", "ENDED", "DECLINED"] },
+        "encryptedOffer": { "type": "string", "description": "AES-GCM encrypted WebRTC SDP offer." },
+        "encryptedAnswer": { "type": "string", "description": "AES-GCM encrypted WebRTC SDP answer." },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["callerUid", "memberUids", "callType", "status", "createdAt", "updatedAt"]
+    },
+    "IceCandidateSignal": {
+      "title": "IceCandidateSignal",
+      "description": "AES-GCM encrypted WebRTC ICE candidate document.",
+      "type": "object",
+      "properties": {
+        "senderUid": { "type": "string", "description": "Sender Firebase UID." },
+        "memberUids": { "type": "array", "description": "Denormalized room member UIDs (max 2)." },
+        "encryptedCandidate": { "type": "string", "description": "AES-GCM encrypted ICE candidate JSON." },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["senderUid", "memberUids", "encryptedCandidate", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private user account document."
+    },
+    "/rooms/{roomId}": {
+      "schema": { "$ref": "#/entities/CoupleRoom" },
+      "description": "Two-seat private couple room."
+    },
+    "/rooms/{roomId}/presence/{userId}": {
+      "schema": { "$ref": "#/entities/PresenceStatus" },
+      "description": "Live presence and FCM token subcollection."
+    },
+    "/rooms/{roomId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/EncryptedMessage" },
+      "description": "Zero-knowledge encrypted messages subcollection."
+    },
+    "/rooms/{roomId}/calls/{callId}": {
+      "schema": { "$ref": "#/entities/CallSignal" },
+      "description": "Encrypted WebRTC call signaling sessions."
+    },
+    "/rooms/{roomId}/calls/{callId}/candidates/{candidateId}": {
+      "schema": { "$ref": "#/entities/IceCandidateSignal" },
+      "description": "Encrypted WebRTC ICE candidates."
+    }
+  }
+}

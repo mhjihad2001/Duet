@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="duet_obsidian">#FF0B141A</color>
+    <color name="duet_emerald">#FF00A884</color>
+    <color name="duet_bubble_out">#FF005C4B</color>
+    <color name="duet_bubble_in">#FF202C33</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+</resources>

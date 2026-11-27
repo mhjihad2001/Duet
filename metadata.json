@@ -1,0 +1,6 @@
+{
+  "name": "Duet",
+  "description": "Private end-to-end encrypted two-person messenger with zero-knowledge AES-256-GCM encryption, offline-first Room cache, biometric lock, and HD WebRTC audio/video calling.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">Duet</string>
+    <string name="app_tagline">Zero-Knowledge Private Messenger</string>
+    <string name="sign_in_google">Sign in with Google</string>
+    <string name="vault_unlock_title">Unlock Duet Vault</string>
+    <string name="vault_unlock_subtitle">Enter your 4-digit PIN or use biometrics</string>
+    <string name="biometric_prompt_title">Unlock Duet</string>
+    <string name="biometric_prompt_subtitle">Verify identity to decrypt messages</string>
+    <string name="biometric_prompt_cancel">Use PIN</string>
+    <string name="channel_messages_name">Encrypted Messages</string>
+    <string name="channel_messages_desc">High-priority end-to-end encrypted chat notifications</string>
+    <string name="channel_calls_name">Incoming Calls</string>
+    <string name="channel_calls_desc">Full-screen alerts for incoming private audio and video calls</string>
+    <string name="e2ee_banner">Messages and calls are end-to-end encrypted with AES-256-GCM. Only you and your partner can read or hear them.</string>
+</resources>

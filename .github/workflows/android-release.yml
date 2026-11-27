@@ -1,0 +1,118 @@
+name: Build & Publish Duet Android APK
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: 'Version name for release (e.g. 1.0.1)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+
+      - name: Resolve version metadata
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.version_name }}" ]; then
+            RAW_VER="${{ github.event.inputs.version_name }}"
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            RAW_VER="${GITHUB_REF_NAME#v}"
+          else
+            RAW_VER="1.0.${{ github.run_number }}"
+          fi
+          TAG_NAME="v${RAW_VER#v}"
+          echo "version_name=${RAW_VER#v}" >> "$GITHUB_OUTPUT"
+          echo "version_code=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+          echo "tag_name=${TAG_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare signing keystores & optional secrets
+        run: |
+          if [ -f debug.keystore.base64 ] && [ ! -f debug.keystore ]; then
+            base64 -d debug.keystore.base64 > debug.keystore
+          fi
+          if [ -n "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" ]; then
+            echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > my-upload-key.jks
+            echo "HAS_RELEASE_KEYSTORE=true" >> "$GITHUB_ENV"
+          else
+            echo "HAS_RELEASE_KEYSTORE=false" >> "$GITHUB_ENV"
+          fi
+          if [ -n "${{ secrets.GOOGLE_SERVICES_JSON }}" ]; then
+            echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > app/google-services.json
+          fi
+          touch .env
+          if [ -n "${{ github.repository }}" ]; then
+            echo "GITHUB_REPO=${{ github.repository }}" >> .env
+          fi
+          if [ -n "${{ secrets.PUSH_WEBHOOK_URL }}" ]; then
+            echo "PUSH_WEBHOOK_URL=${{ secrets.PUSH_WEBHOOK_URL }}" >> .env
+          fi
+
+      - name: Build Android APK
+        env:
+          KEYSTORE_PATH: ${{ github.workspace }}/my-upload-key.jks
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ "$HAS_RELEASE_KEYSTORE" = "true" ]; then
+            gradle assembleRelease \
+              -PDUET_VERSION_NAME="${{ steps.version.outputs.version_name }}" \
+              -PDUET_VERSION_CODE="${{ steps.version.outputs.version_code }}" \
+              --no-daemon
+            APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          else
+            gradle assembleDebug \
+              -PDUET_VERSION_NAME="${{ steps.version.outputs.version_name }}" \
+              -PDUET_VERSION_CODE="${{ steps.version.outputs.version_code }}" \
+              --no-daemon
+            APK_PATH=$(find app/build/outputs/apk/debug -name "*.apk" | head -n 1)
+          fi
+          OUT_NAME="Duet-${{ steps.version.outputs.tag_name }}.apk"
+          cp "$APK_PATH" "$OUT_NAME"
+          echo "apk_file=$OUT_NAME" >> "$GITHUB_ENV"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: duet-apk
+          path: ${{ env.apk_file }}
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag_name }}
+          name: Duet ${{ steps.version.outputs.tag_name }}
+          body: |
+            Automated build of Duet Private Messenger (${{ steps.version.outputs.tag_name }}).
+            Download and tap the `.apk` file below to update directly on your device.
+          files: ${{ env.apk_file }}
+          generate_release_notes: true
